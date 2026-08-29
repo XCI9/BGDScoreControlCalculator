@@ -1,6 +1,15 @@
 export const MAX_SCORE_TYPES = 20;
 export const MAX_GAMES = 20;
 export const DEFAULT_RESULT_LIMIT = 100_000;
+export const SORT_METRICS = Object.freeze(["games", "stamina", "scoreTypes"]);
+export const SORT_PRIORITY_PERMUTATIONS = Object.freeze([
+  Object.freeze(["games", "stamina", "scoreTypes"]),
+  Object.freeze(["games", "scoreTypes", "stamina"]),
+  Object.freeze(["stamina", "games", "scoreTypes"]),
+  Object.freeze(["stamina", "scoreTypes", "games"]),
+  Object.freeze(["scoreTypes", "games", "stamina"]),
+  Object.freeze(["scoreTypes", "stamina", "games"]),
+]);
 
 export const MULTIPLIER_RULES = Object.freeze([
   Object.freeze({ multiplier: 1, stamina: 0 }),
@@ -115,16 +124,19 @@ export function buildActions(scores) {
 function makeResult(selectedEntries, actions) {
   let games = 0;
   let stamina = 0;
+  const scoreTypeValues = new Set();
   const entries = selectedEntries.map(([actionIndex, count]) => {
     const action = actions[actionIndex];
     games += count;
     stamina += action.stamina * count;
+    scoreTypeValues.add(action.baseScore);
     return Object.freeze([actionIndex, count]);
   });
 
   return Object.freeze({
     games,
     stamina,
+    scoreTypes: scoreTypeValues.size,
     entries: Object.freeze(entries),
   });
 }
@@ -253,21 +265,47 @@ function compareEntries(leftEntries, rightEntries) {
   return leftEntries.length - rightEntries.length;
 }
 
-export function compareResults(left, right, mode = "games") {
-  if (mode === "stamina") {
-    return left.stamina - right.stamina
-      || left.games - right.games
-      || compareEntries(left.entries, right.entries);
+function normalizeSortPriorities(priorities) {
+  if (typeof priorities === "string") {
+    if (!SORT_METRICS.includes(priorities)) throw new TypeError(`Unknown sort metric: ${priorities}`);
+    return [priorities, ...SORT_METRICS.filter((metric) => metric !== priorities)];
   }
 
-  return left.games - right.games
-    || left.stamina - right.stamina
-    || compareEntries(left.entries, right.entries);
+  if (
+    !Array.isArray(priorities)
+    || priorities.length !== SORT_METRICS.length
+    || new Set(priorities).size !== SORT_METRICS.length
+    || priorities.some((metric) => !SORT_METRICS.includes(metric))
+  ) {
+    throw new TypeError("Sort priorities must contain games, stamina and scoreTypes exactly once.");
+  }
+
+  return priorities;
 }
 
-export function createResultOrder(results, mode = "games") {
+export function getSortOrderKey(priorities) {
+  return normalizeSortPriorities(priorities).join("-");
+}
+
+function compareResultsWithNormalizedPriorities(left, right, normalizedPriorities) {
+  for (const metric of normalizedPriorities) {
+    const difference = left[metric] - right[metric];
+    if (difference !== 0) return difference;
+  }
+  return compareEntries(left.entries, right.entries);
+}
+
+export function compareResults(left, right, priorities = SORT_METRICS) {
+  return compareResultsWithNormalizedPriorities(left, right, normalizeSortPriorities(priorities));
+}
+
+export function createResultOrder(results, priorities = SORT_METRICS) {
+  const normalizedPriorities = normalizeSortPriorities(priorities);
   const indexes = Uint32Array.from({ length: results.length }, (_, index) => index);
-  indexes.sort((leftIndex, rightIndex) => compareResults(results[leftIndex], results[rightIndex], mode));
+  indexes.sort((leftIndex, rightIndex) => compareResultsWithNormalizedPriorities(
+    results[leftIndex],
+    results[rightIndex],
+    normalizedPriorities,
+  ));
   return indexes;
 }
-

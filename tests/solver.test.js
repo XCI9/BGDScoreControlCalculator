@@ -70,6 +70,15 @@ test("different multiplier routes are retained", () => {
   assert.ok(costs.includes("5:0"));
 });
 
+test("score type count uses distinct base scores and ignores multiplier differences", () => {
+  const singleBase = solveExactCombinations({ scores: [100], difference: 600, maxGames: 2 });
+  assert.ok(singleBase.results.length > 0);
+  assert.ok(singleBase.results.every((result) => result.scoreTypes === 1));
+
+  const mixedBases = solveExactCombinations({ scores: [100, 200], difference: 300, maxGames: 2 });
+  assert.equal(mixedBases.results[0].scoreTypes, 2);
+});
+
 test("game limit is inclusive and excludes routes that require more games", () => {
   assert.equal(solveExactCombinations({ scores: [100], difference: 400, maxGames: 4 }).results.length, 1);
   assert.equal(solveExactCombinations({ scores: [100], difference: 400, maxGames: 3 }).results.length, 0);
@@ -95,14 +104,22 @@ test("result limit stops enumeration and reports truncation", () => {
 
 test("result comparators apply documented primary and secondary keys", () => {
   const results = [
-    { games: 3, stamina: 0, entries: [[0, 3]] },
-    { games: 1, stamina: 2, entries: [[2, 1]] },
-    { games: 1, stamina: 1, entries: [[1, 1]] },
+    { games: 3, stamina: 0, scoreTypes: 1, entries: [[0, 3]] },
+    { games: 1, stamina: 2, scoreTypes: 3, entries: [[2, 1]] },
+    { games: 1, stamina: 1, scoreTypes: 2, entries: [[1, 1]] },
   ];
 
   assert.deepEqual([...createResultOrder(results, "games")], [2, 1, 0]);
   assert.deepEqual([...createResultOrder(results, "stamina")], [0, 2, 1]);
   assert.ok(compareResults(results[2], results[1], "games") < 0);
+  assert.deepEqual(
+    [...createResultOrder(results, ["scoreTypes", "games", "stamina"])],
+    [0, 2, 1],
+  );
+  assert.deepEqual(
+    [...createResultOrder(results, ["games", "scoreTypes", "stamina"])],
+    [2, 1, 0],
+  );
 });
 
 test("zero difference is valid input but current score above target is rejected", () => {
@@ -150,4 +167,3 @@ test("scores that overflow at ×15 are rejected", () => {
     code: "SCORE_MULTIPLICATION_OVERFLOW",
   });
 });
-

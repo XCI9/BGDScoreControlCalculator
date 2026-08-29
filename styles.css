@@ -361,8 +361,7 @@ input::placeholder {
 }
 
 .button,
-.page-button,
-.segmented-control button {
+.page-button {
   border: 0;
   cursor: pointer;
 }
@@ -488,39 +487,54 @@ input::placeholder {
 }
 
 .sort-control {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-}
-
-.sort-control > span {
-  color: var(--muted);
-  font-size: 0.78rem;
-  font-weight: 600;
-}
-
-.segmented-control {
-  display: flex;
-  padding: 4px;
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  gap: 6px;
+  padding: 6px;
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 14px;
   background: rgba(5, 8, 16, 0.48);
 }
 
-.segmented-control button {
-  min-width: 70px;
-  padding: 8px 12px;
-  border-radius: 8px;
+.sort-field,
+.sort-tertiary {
+  display: grid;
+  gap: 4px;
+  min-width: 112px;
+  padding: 6px 9px;
+}
+
+.sort-field label,
+.sort-tertiary span {
   color: var(--muted);
+  font-size: 0.64rem;
+  font-weight: 600;
+}
+
+.sort-field select {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  color: var(--text);
   background: transparent;
-  font-size: 0.82rem;
+  cursor: pointer;
+  font-size: 0.8rem;
   font-weight: 700;
 }
 
-.segmented-control button[aria-pressed="true"] {
+.sort-field select option {
   color: var(--text);
   background: var(--surface-raised);
-  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.2);
+}
+
+.sort-tertiary {
+  border-left: 1px solid var(--line);
+}
+
+.sort-tertiary strong {
+  color: var(--cyan);
+  font-size: 0.8rem;
+  white-space: nowrap;
 }
 
 .result-list {
@@ -530,7 +544,7 @@ input::placeholder {
 
 .result-card {
   display: grid;
-  grid-template-columns: 190px 1fr;
+  grid-template-columns: 240px 1fr;
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
@@ -854,7 +868,22 @@ noscript {
   }
 
   .sort-control {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .sort-field,
+  .sort-tertiary {
+    min-width: 0;
+  }
+
+  .sort-tertiary {
+    display: flex;
+    grid-column: 1 / -1;
+    align-items: center;
     justify-content: space-between;
+    border-top: 1px solid var(--line);
+    border-left: 0;
   }
 
   .result-card {

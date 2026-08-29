@@ -225,7 +225,12 @@ if (!chromePath) {
     })`);
     assert(calculation.summary.includes("找到 3 種精確打法"), "Expected three exact routes.");
     assert(calculation.cards === 3, "Expected three rendered result cards.");
-    assert(calculation.firstCard.includes("1場數") && calculation.firstCard.includes("0體力"), "Game-first sorting is incorrect.");
+    assert(
+      calculation.firstCard.includes("1場數")
+      && calculation.firstCard.includes("0體力")
+      && calculation.firstCard.includes("1分數種類"),
+      "Game-first sorting or score-type rendering is incorrect.",
+    );
     assert(calculation.errorHidden, "Unexpected form error after a valid calculation.");
 
     const routeTable = await evaluate(client, `({
@@ -255,9 +260,47 @@ if (!chromePath) {
       await writeFile(path.resolve(process.env.SCREENSHOT_PATH), screenshot.data, "base64");
     }
 
-    await evaluate(client, "document.querySelector('[data-sort=\"stamina\"]').click()");
+    const initialPriorities = await evaluate(client, `({
+      primary: document.querySelector('#primary-sort').value,
+      secondary: document.querySelector('#secondary-sort').value,
+      tertiary: document.querySelector('#tertiary-sort').textContent,
+    })`);
+    assert(
+      initialPriorities.primary === "games"
+      && initialPriorities.secondary === "stamina"
+      && initialPriorities.tertiary === "分數種類",
+      "Initial sort priorities are incorrect.",
+    );
+
+    await evaluate(client, `(() => {
+      const select = document.querySelector('#primary-sort');
+      select.value = 'stamina';
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+      return true;
+    })()`);
     const staminaCards = await evaluate(client, "[...document.querySelectorAll('.result-card')].map((card) => card.textContent)");
     assert(staminaCards[1].includes("5場數") && staminaCards[1].includes("0體力"), "Stamina-first sorting is incorrect.");
+
+    const swappedPriorities = await evaluate(client, `({
+      primary: document.querySelector('#primary-sort').value,
+      secondary: document.querySelector('#secondary-sort').value,
+      tertiary: document.querySelector('#tertiary-sort').textContent,
+    })`);
+    assert(
+      swappedPriorities.primary === "stamina"
+      && swappedPriorities.secondary === "games"
+      && swappedPriorities.tertiary === "分數種類",
+      "Selecting the current second priority should swap the first two priorities.",
+    );
+
+    await evaluate(client, `(() => {
+      const select = document.querySelector('#secondary-sort');
+      select.value = 'scoreTypes';
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+      return true;
+    })()`);
+    const automaticTertiary = await evaluate(client, "document.querySelector('#tertiary-sort').textContent");
+    assert(automaticTertiary === "場數", "The remaining sort metric should become the third priority.");
 
     await evaluate(client, `(() => {
       document.querySelector('#score-list').value = '1, 2, 3';

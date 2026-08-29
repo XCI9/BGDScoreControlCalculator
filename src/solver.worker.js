@@ -3,6 +3,8 @@ import {
   createResultOrder,
   DEFAULT_RESULT_LIMIT,
   enumerateCombinationEvents,
+  getSortOrderKey,
+  SORT_PRIORITY_PERMUTATIONS,
 } from "./solver.js";
 
 let activeTask = null;
@@ -49,18 +51,22 @@ async function runSearch(message, task) {
       }
 
       if (next.done) {
-        const gamesOrder = createResultOrder(results, "games");
-        const staminaOrder = createResultOrder(results, "stamina");
+        const orders = {};
+        const transferableBuffers = [];
+        for (const priorities of SORT_PRIORITY_PERMUTATIONS) {
+          const order = createResultOrder(results, priorities);
+          orders[getSortOrderKey(priorities)] = order;
+          transferableBuffers.push(order.buffer);
+        }
         const { actions: unusedActions, ...stats } = next.value;
         self.postMessage({
           type: "complete",
           requestId,
           actions,
           results,
-          gamesOrder,
-          staminaOrder,
+          orders,
           stats,
-        }, [gamesOrder.buffer, staminaOrder.buffer]);
+        }, transferableBuffers);
         return;
       }
 

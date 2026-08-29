@@ -1,7 +1,9 @@
 import {
   CalculatorInputError,
   DEFAULT_RESULT_LIMIT,
+  getSortOrderKey,
   normalizeCalculatorInput,
+  SORT_METRICS,
 } from "./solver.js";
 
 const PAGE_SIZE = 50;
@@ -29,7 +31,9 @@ const elements = {
   nextPage: document.querySelector("#next-page"),
   pageStatus: document.querySelector("#page-status"),
   sortControl: document.querySelector(".sort-control"),
-  sortButtons: [...document.querySelectorAll("[data-sort]")],
+  primarySort: document.querySelector("#primary-sort"),
+  secondarySort: document.querySelector("#secondary-sort"),
+  tertiarySort: document.querySelector("#tertiary-sort"),
 };
 
 const state = {
@@ -39,13 +43,16 @@ const state = {
   input: null,
   actions: [],
   results: [],
-  orders: {
-    games: new Uint32Array(),
-    stamina: new Uint32Array(),
-  },
-  sortMode: "games",
+  orders: {},
+  sortPriorities: [...SORT_METRICS],
   page: 1,
 };
+
+const sortLabels = Object.freeze({
+  games: "場數",
+  stamina: "體力",
+  scoreTypes: "分數種類",
+});
 
 function formatNumber(value) {
   return numberFormatter.format(value);
@@ -102,8 +109,7 @@ function ensureWorker() {
 function resetResults() {
   state.actions = [];
   state.results = [];
-  state.orders.games = new Uint32Array();
-  state.orders.stamina = new Uint32Array();
+  state.orders = {};
   state.page = 1;
   elements.resultsSection.hidden = true;
   elements.resultWarning.hidden = true;
@@ -112,9 +118,8 @@ function resetResults() {
 
 function showZeroDifference() {
   state.actions = [];
-  state.results = [{ games: 0, stamina: 0, entries: [] }];
-  state.orders.games = Uint32Array.of(0);
-  state.orders.stamina = Uint32Array.of(0);
+  state.results = [{ games: 0, stamina: 0, scoreTypes: 0, entries: [] }];
+  state.orders = { [getSortOrderKey(state.sortPriorities)]: Uint32Array.of(0) };
   state.page = 1;
 
   elements.resultsSummary.textContent = "分差 0 分・你已經抵達目標，不需要再進行遊戲。";
@@ -203,8 +208,7 @@ function handleWorkerMessage(event) {
   setBusy(false);
   state.actions = message.actions;
   state.results = message.results;
-  state.orders.games = message.gamesOrder;
-  state.orders.stamina = message.staminaOrder;
+  state.orders = message.orders;
   state.page = 1;
 
   const count = state.results.length;
@@ -299,7 +303,11 @@ function createResultCard(result, rank) {
 
   const summary = createElement("div", "result-card__summary");
   const metrics = createElement("div", "result-card__metrics");
-  metrics.append(createMetric(result.games, "場數"), createMetric(result.stamina, "體力"));
+  metrics.append(
+    createMetric(result.games, "場數"),
+    createMetric(result.stamina, "體力"),
+    createMetric(result.scoreTypes, "分數種類"),
+  );
   summary.append(createElement("span", "result-card__rank", `Route ${String(rank).padStart(2, "0")}`), metrics);
 
   const routes = createElement("div", "result-card__routes");
@@ -321,7 +329,7 @@ function createResultCard(result, rank) {
 }
 
 function renderResults() {
-  const order = state.orders[state.sortMode];
+  const order = state.orders[getSortOrderKey(state.sortPriorities)] ?? new Uint32Array();
   const totalResults = order.length;
   const totalPages = Math.max(1, Math.ceil(totalResults / PAGE_SIZE));
   state.page = Math.min(Math.max(1, state.page), totalPages);
@@ -342,15 +350,30 @@ function renderResults() {
   elements.pageStatus.textContent = `第 ${formatNumber(state.page)} / ${formatNumber(totalPages)} 頁`;
 }
 
-function changeSortMode(event) {
-  const mode = event.currentTarget.dataset.sort;
-  if (mode === state.sortMode) return;
+function syncSortControls() {
+  const [primary, secondary, tertiary] = state.sortPriorities;
+  elements.primarySort.value = primary;
+  elements.secondarySort.value = secondary;
+  elements.tertiarySort.textContent = sortLabels[tertiary];
+}
 
-  state.sortMode = mode;
-  state.page = 1;
-  for (const button of elements.sortButtons) {
-    button.setAttribute("aria-pressed", String(button.dataset.sort === mode));
+function changeSortPriority(position, selectedMetric) {
+  const [currentPrimary, currentSecondary] = state.sortPriorities;
+  let primary = currentPrimary;
+  let secondary = currentSecondary;
+
+  if (position === "primary") {
+    primary = selectedMetric;
+    if (selectedMetric === currentSecondary) secondary = currentPrimary;
+  } else {
+    secondary = selectedMetric;
+    if (selectedMetric === currentPrimary) primary = currentSecondary;
   }
+
+  const tertiary = SORT_METRICS.find((metric) => metric !== primary && metric !== secondary);
+  state.sortPriorities = [primary, secondary, tertiary];
+  state.page = 1;
+  syncSortControls();
   renderResults();
 }
 
@@ -366,5 +389,7 @@ elements.currentScore.addEventListener("input", updateDifferencePreview);
 elements.targetScore.addEventListener("input", updateDifferencePreview);
 elements.previousPage.addEventListener("click", () => changePage(-1));
 elements.nextPage.addEventListener("click", () => changePage(1));
-for (const button of elements.sortButtons) button.addEventListener("click", changeSortMode);
+elements.primarySort.addEventListener("change", (event) => changeSortPriority("primary", event.currentTarget.value));
+elements.secondarySort.addEventListener("change", (event) => changeSortPriority("secondary", event.currentTarget.value));
+syncSortControls();
 document.documentElement.dataset.appReady = "true";

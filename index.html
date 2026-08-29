@@ -120,11 +120,26 @@
               <p id="results-summary" class="results-summary"></p>
             </div>
 
-            <div class="sort-control" aria-label="排序方式">
-              <span>優先排序</span>
-              <div class="segmented-control">
-                <button type="button" data-sort="games" aria-pressed="true">場數</button>
-                <button type="button" data-sort="stamina" aria-pressed="false">體力</button>
+            <div class="sort-control" aria-label="排序優先順位">
+              <div class="sort-field">
+                <label for="primary-sort">第一順位</label>
+                <select id="primary-sort">
+                  <option value="games">場數</option>
+                  <option value="stamina">體力</option>
+                  <option value="scoreTypes">分數種類</option>
+                </select>
+              </div>
+              <div class="sort-field">
+                <label for="secondary-sort">第二順位</label>
+                <select id="secondary-sort">
+                  <option value="stamina">體力</option>
+                  <option value="games">場數</option>
+                  <option value="scoreTypes">分數種類</option>
+                </select>
+              </div>
+              <div class="sort-tertiary">
+                <span>第三順位</span>
+                <strong id="tertiary-sort" aria-live="polite">分數種類</strong>
               </div>
             </div>
           </div>
