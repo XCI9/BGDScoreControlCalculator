@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="輸入目前分數、目標分數與可打出的分數，找出精確達標且兼顧場數與體力的打法。">
+    <meta name="theme-color" content="#13182b">
+    <title>控分組合計算器</title>
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="hero" aria-labelledby="page-title">
+        <div class="hero__copy">
+          <p class="eyebrow"><span aria-hidden="true"></span> Score route planner</p>
+          <h1 id="page-title">控分組合計算器</h1>
+          <p class="hero__description">
+            輸入你的可打分數與目標，找出場數、體力都一目了然的精確控分路線。
+          </p>
+        </div>
+
+        <div class="rule-strip" aria-label="倍率與體力規則">
+          <div><span>×1</span><small>0 體</small></div>
+          <div><span>×5</span><small>1 體</small></div>
+          <div><span>×10</span><small>2 體</small></div>
+          <div><span>×15</span><small>3 體</small></div>
+        </div>
+      </header>
+
+      <main>
+        <section class="calculator-card" aria-labelledby="calculator-title">
+          <div class="section-heading">
+            <div>
+              <p class="section-kicker">01 / 輸入條件</p>
+              <h2 id="calculator-title">設定這次的控分路線</h2>
+            </div>
+            <span class="privacy-note">只在你的瀏覽器內計算</span>
+          </div>
+
+          <form id="calculator-form" novalidate>
+            <div class="field field--full">
+              <div class="field__label-row">
+                <label for="score-list">可打出的基礎分數</label>
+                <span>最多 20 種</span>
+              </div>
+              <textarea
+                id="score-list"
+                name="scoreList"
+                rows="4"
+                inputmode="numeric"
+                autocomplete="off"
+                placeholder="例如：&#10;1823400, 1942500, 2018800"
+                aria-describedby="score-list-hint"
+                required
+              ></textarea>
+              <p id="score-list-hint" class="field__hint">可用逗號、空格或換行分隔；重複分數會自動合併。</p>
+            </div>
+
+            <div class="form-grid">
+              <div class="field">
+                <label for="current-score">目前分數</label>
+                <div class="number-field">
+                  <input id="current-score" name="currentScore" type="text" inputmode="numeric" autocomplete="off" placeholder="0" required>
+                  <span>分</span>
+                </div>
+              </div>
+
+              <div class="field">
+                <label for="target-score">目標分數</label>
+                <div class="number-field">
+                  <input id="target-score" name="targetScore" type="text" inputmode="numeric" autocomplete="off" placeholder="10000000" required>
+                  <span>分</span>
+                </div>
+              </div>
+
+              <div class="field">
+                <label for="max-games">最多場數</label>
+                <div class="number-field">
+                  <input id="max-games" name="maxGames" type="number" min="1" max="20" step="1" value="10" required>
+                  <span>場</span>
+                </div>
+              </div>
+
+              <div class="difference-preview" aria-live="polite">
+                <span>預計分差</span>
+                <strong id="difference-preview">—</strong>
+              </div>
+            </div>
+
+            <div id="form-error" class="message message--error" role="alert" hidden></div>
+
+            <div class="form-actions">
+              <button id="calculate-button" class="button button--primary" type="submit">
+                <span>開始計算</span>
+                <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+              </button>
+              <button id="cancel-button" class="button button--secondary" type="button" hidden>取消計算</button>
+            </div>
+          </form>
+
+          <div id="search-status" class="search-status" aria-live="polite" hidden>
+            <div class="search-status__topline">
+              <div>
+                <span class="spinner" aria-hidden="true"></span>
+                <strong>正在尋找精確打法</strong>
+              </div>
+              <span id="progress-copy">已找到 0 筆</span>
+            </div>
+            <div class="progress-track" aria-hidden="true"><span></span></div>
+            <p>計算在背景進行，你可以隨時取消並縮小最多場數。</p>
+          </div>
+        </section>
+
+        <section id="results-section" class="results-section" aria-labelledby="results-title" hidden>
+          <div class="section-heading section-heading--results">
+            <div>
+              <p class="section-kicker">02 / 精確打法</p>
+              <h2 id="results-title">抵達目標的路線</h2>
+              <p id="results-summary" class="results-summary"></p>
+            </div>
+
+            <div class="sort-control" aria-label="排序方式">
+              <span>優先排序</span>
+              <div class="segmented-control">
+                <button type="button" data-sort="games" aria-pressed="true">場數</button>
+                <button type="button" data-sort="stamina" aria-pressed="false">體力</button>
+              </div>
+            </div>
+          </div>
+
+          <div id="result-warning" class="message message--warning" role="status" hidden></div>
+          <div id="result-empty" class="empty-state" hidden>
+            <div class="empty-state__icon" aria-hidden="true">∅</div>
+            <h3>限制場數內沒有精確解</h3>
+            <p>可以增加最多場數，或重新確認輸入的基礎分數。</p>
+          </div>
+          <div id="result-list" class="result-list"></div>
+
+          <nav id="pagination" class="pagination" aria-label="結果分頁" hidden>
+            <button id="previous-page" class="page-button" type="button">
+              <span aria-hidden="true">←</span> 上一頁
+            </button>
+            <span id="page-status" aria-live="polite"></span>
+            <button id="next-page" class="page-button" type="button">
+              下一頁 <span aria-hidden="true">→</span>
+            </button>
+          </nav>
+        </section>
+      </main>
+
+      <footer>
+        <span>控分組合計算器</span>
+        <p>所有計算都留在本機，不會上傳你的分數。</p>
+      </footer>
+    </div>
+
+    <noscript>此計算器需要啟用 JavaScript 才能使用。</noscript>
+    <script type="module" src="./src/app.js"></script>
+  </body>
+</html>

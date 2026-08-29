@@ -1,0 +1,13 @@
+{
+  "name": "bgd-score-control-calculator",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "可部署至 GitHub Pages 的精確控分組合計算器",
+  "scripts": {
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
