@@ -254,7 +254,7 @@ function createRouteRow(action, count) {
   settingCell.className = "route-table__setting";
   settingCell.append(
     createElement("strong", "route-number route-number--highlight", formatNumber(action.baseScore)),
-    createElement("span", "multiplier-tag", `×${action.multiplier}`),
+    createElement("span", "multiplier-tag", `×${action.multiplier * count}`),
   );
 
   const staminaCell = document.createElement("td");

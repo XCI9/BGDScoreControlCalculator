@@ -245,6 +245,59 @@ if (!chromePath) {
     assert(routeTable.cells.join("|") === "500×1|0體|1場|500", "Route table values are incorrect.");
     assert(routeTable.highlighted === 3, "The first three route values should be highlighted.");
 
+    await evaluate(client, `(() => {
+      document.querySelector('#score-list').value = '100';
+      document.querySelector('#current-score').value = '0';
+      document.querySelector('#target-score').value = '300';
+      document.querySelector('#max-games').value = '3';
+      document.querySelector('#calculator-form').requestSubmit();
+      return true;
+    })()`);
+    await waitFor(
+      client,
+      "document.querySelector('#results-summary').textContent.includes('找到 1 種精確打法')",
+      "The zero-stamina total-multiplier calculation did not finish.",
+    );
+    const zeroStaminaMultiplier = await evaluate(
+      client,
+      "document.querySelector('.result-card .multiplier-tag').textContent",
+    );
+    assert(zeroStaminaMultiplier === '×3', "Three zero-stamina plays should show a ×3 total multiplier.");
+
+    await evaluate(client, `(() => {
+      document.querySelector('#score-list').value = '100';
+      document.querySelector('#current-score').value = '0';
+      document.querySelector('#target-score').value = '1000';
+      document.querySelector('#max-games').value = '2';
+      document.querySelector('#calculator-form').requestSubmit();
+      return true;
+    })()`);
+    await waitFor(
+      client,
+      "document.querySelector('#results-summary').textContent.includes('找到 2 種精確打法')",
+      "The total-multiplier calculation did not finish.",
+    );
+    const repeatedMultiplier = await evaluate(client, `(() => {
+      const card = [...document.querySelectorAll('.result-card')].find((candidate) => (
+        candidate.textContent.includes('2場數') && candidate.textContent.includes('2體力')
+      ));
+      return card?.querySelector('.multiplier-tag')?.textContent;
+    })()`);
+    assert(repeatedMultiplier === '×10', "Repeated plays should show their total multiplier.");
+
+    await evaluate(client, `(() => {
+      document.querySelector('#score-list').value = '100, 500';
+      document.querySelector('#target-score').value = '500';
+      document.querySelector('#max-games').value = '5';
+      document.querySelector('#calculator-form').requestSubmit();
+      return true;
+    })()`);
+    await waitFor(
+      client,
+      "document.querySelector('#results-summary').textContent.includes('找到 3 種精確打法')",
+      "The original smoke-test calculation did not finish after checking total multipliers.",
+    );
+
     if (process.env.SCREENSHOT_PATH) {
       await client.send("Page.enable");
       await client.send("Emulation.setDeviceMetricsOverride", {
