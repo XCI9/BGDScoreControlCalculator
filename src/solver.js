@@ -1,4 +1,4 @@
-export const MAX_SCORE_TYPES = 20;
+export const MAX_SCORE_TYPES = 500;
 export const MAX_GAMES = 20;
 export const DEFAULT_RESULT_LIMIT = 100_000;
 export const SORT_METRICS = Object.freeze(["games", "stamina", "scoreTypes"]);
@@ -165,7 +165,11 @@ export function* enumerateCombinationEvents({
   }
 
   const actions = buildActions(scores);
-  const actionCount = actions.length;
+  // Keep the full action list and its indexes for result rendering, but exclude
+  // actions above the target from both the search and its pruning bounds.
+  const firstUnusableIndex = actions.findIndex((action) => action.score > difference);
+  const actionCount = firstUnusableIndex === -1 ? actions.length : firstUnusableIndex;
+  const firstActionIndexByScore = new Map();
   const suffixGreatestCommonDivisor = new Array(actionCount);
   const suffixMaximumScore = new Array(actionCount);
   const deadStates = new Set();
@@ -174,6 +178,7 @@ export function* enumerateCombinationEvents({
   let suffixGcd = 0;
   let suffixMax = 0;
   for (let index = actionCount - 1; index >= 0; index -= 1) {
+    firstActionIndexByScore.set(actions[index].score, index);
     suffixGcd = greatestCommonDivisor(suffixGcd, actions[index].score);
     suffixMax = Math.max(suffixMax, actions[index].score);
     suffixGreatestCommonDivisor[index] = suffixGcd;
@@ -196,8 +201,13 @@ export function* enumerateCombinationEvents({
     if (deadStates.has(stateKey) || !canReach(startIndex, remaining, slotsLeft)) return;
 
     const foundBeforeState = found;
+    // With one game left, only exact matches can finish the route. Start at the
+    // first such action and retain all base-score/multiplier variants.
+    const firstCandidate = slotsLeft === 1
+      ? Math.max(startIndex, firstActionIndexByScore.get(remaining) ?? actionCount)
+      : startIndex;
 
-    for (let actionIndex = startIndex; actionIndex < actionCount; actionIndex += 1) {
+    for (let actionIndex = firstCandidate; actionIndex < actionCount; actionIndex += 1) {
       const action = actions[actionIndex];
       if (action.score > remaining || limitReached) break;
 

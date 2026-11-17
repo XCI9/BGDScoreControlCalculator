@@ -389,7 +389,38 @@ if (!chromePath) {
     assert(zeroDifference.includes("0場數") && zeroDifference.includes("0體力"), "Zero-difference rendering is incorrect.");
 
     await evaluate(client, `(() => {
-      document.querySelector('#score-list').value = Array.from({ length: 20 }, (_, index) => index + 1).join(',');
+      document.querySelector('#score-list').value = Array.from({ length: 501 }, (_, index) => 10000 + index).join(',');
+      document.querySelector('#current-score').value = '0';
+      document.querySelector('#target-score').value = '20499';
+      document.querySelector('#max-games').value = '2';
+      document.querySelector('#calculator-form').requestSubmit();
+      return true;
+    })()`);
+    const scoreLimitError = await evaluate(client, "document.querySelector('#form-error').textContent");
+    assert(scoreLimitError.includes('最多只能輸入 500 種不同分數'), "501 distinct scores should exceed the input limit.");
+
+    await evaluate(client, `(() => {
+      document.querySelector('#score-list').value = Array.from({ length: 500 }, (_, index) => 10000 + index).join(',');
+      document.querySelector('#calculator-form').requestSubmit();
+      return true;
+    })()`);
+    await waitFor(
+      client,
+      "document.querySelector('#results-summary').textContent.includes('找到 250 種精確打法')",
+      "The 500-score calculation did not finish.",
+    );
+    const largeInput = await evaluate(client, `({
+      errorHidden: document.querySelector('#form-error').hidden,
+      cards: document.querySelectorAll('.result-card').length,
+      firstCard: document.querySelector('.result-card').textContent,
+      pageStatus: document.querySelector('#page-status').textContent,
+    })`);
+    assert(largeInput.errorHidden && largeInput.cards === 50, "500 scores should calculate and render a full first page.");
+    assert(largeInput.pageStatus.includes('1 / 5'), "The 500-score results should span five pages.");
+    assert(largeInput.firstCard.includes('10,000') && largeInput.firstCard.includes('10,499'), "Large-input action indexes rendered incorrect scores.");
+
+    await evaluate(client, `(() => {
+      document.querySelector('#score-list').value = Array.from({ length: 500 }, (_, index) => index + 1).join(',');
       document.querySelector('#current-score').value = '0';
       document.querySelector('#target-score').value = '200';
       document.querySelector('#max-games').value = '20';
@@ -416,7 +447,7 @@ if (!chromePath) {
     assert(mobileLayout.viewport === 390, "Mobile viewport emulation failed.");
     assert(mobileLayout.content <= mobileLayout.viewport, "Mobile layout has horizontal overflow.");
 
-    console.log("Browser smoke test passed: worker, cancellation, sorting, pagination and 390px layout.");
+    console.log("Browser smoke test passed: 500-score input, worker, cancellation, sorting, pagination and 390px layout.");
   } finally {
     await client?.send("Browser.close").catch(() => {});
     client?.close();
