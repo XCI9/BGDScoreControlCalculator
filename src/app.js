@@ -5,6 +5,7 @@ import {
   normalizeCalculatorInput,
   SORT_METRICS,
 } from "./solver.js";
+import { parseMinimumPtTable } from "./score-import.js";
 
 const PAGE_SIZE = 50;
 const numberFormatter = new Intl.NumberFormat("zh-TW");
@@ -12,6 +13,10 @@ const numberFormatter = new Intl.NumberFormat("zh-TW");
 const elements = {
   form: document.querySelector("#calculator-form"),
   scoreList: document.querySelector("#score-list"),
+  songTable: document.querySelector("#song-table"),
+  importScoresButton: document.querySelector("#import-scores-button"),
+  scoreImportStatus: document.querySelector("#score-import-status"),
+  scoreImportError: document.querySelector("#score-import-error"),
   currentScore: document.querySelector("#current-score"),
   targetScore: document.querySelector("#target-score"),
   maxGames: document.querySelector("#max-games"),
@@ -66,10 +71,33 @@ function setError(message = "") {
 function setBusy(isBusy) {
   state.busy = isBusy;
   elements.calculateButton.disabled = isBusy;
+  elements.importScoresButton.disabled = isBusy;
   elements.cancelButton.hidden = !isBusy;
   elements.cancelButton.disabled = false;
   elements.cancelButton.textContent = "取消計算";
   elements.searchStatus.hidden = !isBusy;
+}
+
+function clearImportFeedback() {
+  elements.scoreImportStatus.hidden = true;
+  elements.scoreImportError.hidden = true;
+}
+
+function importMinimumPtScores() {
+  clearImportFeedback();
+  try {
+    const imported = parseMinimumPtTable(elements.songTable.value);
+    elements.scoreList.value = imported.scores.join(", ");
+    elements.scoreList.dispatchEvent(new Event("input", { bubbles: true }));
+    setError();
+    resetResults();
+    elements.scoreImportStatus.textContent = `已讀取 ${formatNumber(imported.rowCount)} 筆歌曲資料，匯入 ${formatNumber(imported.scores.length)} 種基礎分數（已合併 ${formatNumber(imported.duplicateCount)} 筆重複 PT）。`;
+    elements.scoreImportStatus.hidden = false;
+  } catch (error) {
+    if (!(error instanceof CalculatorInputError)) throw error;
+    elements.scoreImportError.textContent = error.message;
+    elements.scoreImportError.hidden = false;
+  }
 }
 
 function readPreviewInteger(input) {
@@ -384,6 +412,9 @@ function changePage(direction) {
 }
 
 elements.form.addEventListener("submit", startCalculation);
+elements.importScoresButton.addEventListener("click", importMinimumPtScores);
+elements.songTable.addEventListener("input", clearImportFeedback);
+elements.scoreList.addEventListener("input", clearImportFeedback);
 elements.cancelButton.addEventListener("click", cancelCalculation);
 elements.currentScore.addEventListener("input", updateDifferencePreview);
 elements.targetScore.addEventListener("input", updateDifferencePreview);

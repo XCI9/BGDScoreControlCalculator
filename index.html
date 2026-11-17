@@ -55,6 +55,18 @@
                 required
               ></textarea>
               <p id="score-list-hint" class="field__hint">可用逗號、空格或換行分隔；重複分數會自動合併。</p>
+              <details id="score-import" class="score-import">
+                <summary>從歌曲表格匯入最低 PT</summary>
+                <div class="score-import__body">
+                  <label for="song-table">貼上歌曲表格（包含表頭）</label>
+                  <p id="song-table-hint" class="field__hint">在歌曲計分頁面連同表頭複製需要的歌曲資料列後貼上，程式會擷取「最低 PT」欄。</p>
+                  <textarea id="song-table" rows="5" autocomplete="off" spellcheck="false" aria-describedby="song-table-hint" placeholder="在此貼上從歌曲計分頁面複製的表格"></textarea>
+                  <p class="field__hint">匯入會取代上方的基礎分數，重複 PT 會自動合併，最多 500 種。</p>
+                  <button id="import-scores-button" class="button button--secondary" type="button">擷取最低 PT 並填入基礎分數</button>
+                  <p id="score-import-status" class="field__hint" role="status" hidden></p>
+                  <p id="score-import-error" class="message message--error" role="alert" hidden></p>
+                </div>
+              </details>
             </div>
 
             <div class="form-grid">

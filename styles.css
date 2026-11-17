@@ -300,6 +300,43 @@ input::placeholder {
   line-height: 1.6;
 }
 
+.score-import {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: rgba(8, 11, 22, 0.3);
+}
+
+.score-import summary {
+  padding: 14px 16px;
+  color: var(--cyan);
+  cursor: pointer;
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.score-import summary:focus-visible {
+  outline: 3px solid rgba(110, 231, 242, 0.38);
+  outline-offset: 2px;
+  border-radius: var(--radius-md);
+}
+
+.score-import__body {
+  display: grid;
+  min-width: 0;
+  gap: 12px;
+  padding: 0 16px 16px;
+}
+
+.score-import textarea {
+  min-width: 0;
+  font-size: 0.85rem;
+}
+
+#score-import-status {
+  color: var(--lime);
+}
+
 .form-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

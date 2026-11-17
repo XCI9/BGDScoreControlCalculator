@@ -198,6 +198,51 @@ if (!chromePath) {
     await waitFor(client, "document.documentElement?.dataset.appReady === 'true'", "Application module did not initialize.");
 
     await evaluate(client, `(() => {
+      document.querySelector('#score-import').open = true;
+      document.querySelector('#score-list').value = '123';
+      document.querySelector('#song-table').value = '最高PT\\n890';
+      document.querySelector('#import-scores-button').click();
+      return true;
+    })()`);
+    const failedImport = await evaluate(client, `({
+      scores: document.querySelector('#score-list').value,
+      error: document.querySelector('#score-import-error').textContent,
+      errorHidden: document.querySelector('#score-import-error').hidden,
+    })`);
+    assert(failedImport.scores === '123', "An invalid import must preserve existing base scores.");
+    assert(!failedImport.errorHidden && failedImport.error.includes('找不到'), "An invalid import must display an error.");
+
+    const songTableSample = await readFile(path.join(projectRoot, 'tests/fixtures/auto-scores.tsv'), 'utf8');
+    await evaluate(client, `(() => {
+      const textarea = document.querySelector('#song-table');
+      textarea.value = ${JSON.stringify(songTableSample)};
+      textarea.dispatchEvent(new Event('input', { bubbles: true }));
+      document.querySelector('#import-scores-button').click();
+      return true;
+    })()`);
+    const importedScores = await evaluate(client, `({
+      scores: document.querySelector('#score-list').value,
+      status: document.querySelector('#score-import-status').textContent,
+      statusHidden: document.querySelector('#score-import-status').hidden,
+      errorHidden: document.querySelector('#score-import-error').hidden,
+    })`);
+    assert(importedScores.scores === '790, 794, 806, 809, 813, 825, 829, 836, 840, 844, 852, 855, 863, 867, 871, 874, 878, 882, 886, 890, 894, 897, 901, 905, 917, 924', "The real table must import only deduplicated minimum PT scores.");
+    assert(!importedScores.statusHidden && importedScores.status.includes('66 筆') && importedScores.status.includes('26 種') && importedScores.status.includes('40 筆'), "The import summary must report the row and duplicate counts.");
+    assert(importedScores.errorHidden, "A successful import should clear the previous import error.");
+    await evaluate(client, `(() => {
+      document.querySelector('#current-score').value = '0';
+      document.querySelector('#target-score').value = '890';
+      document.querySelector('#max-games').value = '1';
+      document.querySelector('#calculator-form').requestSubmit();
+      return true;
+    })()`);
+    await waitFor(client, "document.querySelector('#results-summary').textContent.includes('找到 1 種精確打法')", "The imported scores did not produce the expected route.");
+    const importedRoute = await evaluate(client, "document.querySelector('.result-card').textContent");
+    assert(importedRoute.includes('890×1'), "The imported score must be usable by the solver.");
+    await evaluate(client, "document.querySelector('#import-scores-button').click()");
+    assert(await evaluate(client, "document.querySelector('#results-section').hidden"), "Replacing base scores must clear stale results.");
+
+    await evaluate(client, `(() => {
       const setValue = (selector, value) => {
         const element = document.querySelector(selector);
         element.value = value;
@@ -447,7 +492,7 @@ if (!chromePath) {
     assert(mobileLayout.viewport === 390, "Mobile viewport emulation failed.");
     assert(mobileLayout.content <= mobileLayout.viewport, "Mobile layout has horizontal overflow.");
 
-    console.log("Browser smoke test passed: 500-score input, worker, cancellation, sorting, pagination and 390px layout.");
+    console.log("Browser smoke test passed: song-table import, 500-score input, worker, cancellation, sorting, pagination and 390px layout.");
   } finally {
     await client?.send("Browser.close").catch(() => {});
     client?.close();
